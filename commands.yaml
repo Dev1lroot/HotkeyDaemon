@@ -1,0 +1,3 @@
+macros:
+  - keys: [125, 42, 193]  # Meta + Shift + F23
+    command: "firefox https://gemini.google.com/app && sleep 0.1 && wmctrl -xa firefox"

@@ -1,0 +1,1 @@
+gcc hkd.c -o hkd $(pkg-config --cflags --libs libevdev yaml-0.1)
