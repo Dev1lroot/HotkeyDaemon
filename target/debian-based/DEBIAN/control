@@ -1,0 +1,10 @@
+Package: hotkeydaemon
+Version: 1.0.1
+Section: utils
+Priority: optional
+Architecture: amd64
+Maintainer: Dev1lroot <admin@dev1lroot.com>
+Depends: libevdev2, libyaml-0-2
+Description: Hotkey daemon for Linux
+ A lightweight daemon to capture global hotkeys and execute commands.
+ This runs on Linux independently of DE/WM and supports custom keymaps.

@@ -2,3 +2,7 @@ hkd
 *.o
 .vscode/
 commands.yaml.bak
+*.deb
+*.gz
+dists/stable/main/binary-amd64/*
+build/*

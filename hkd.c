@@ -22,6 +22,7 @@ Macro macros[32];
 int macro_count = 0;
 int key_states[KEY_MAX] = {0};
 int debug_mode = 0;
+char version[] = "1.0.1";
 
 void load_config();
 void run_as_user(const char *cmd);
@@ -153,6 +154,11 @@ int main(int argc, char **argv) // TODO: Refactor
     for (int i = 1; i < argc; i++) 
     {
         if (strcmp(argv[i], "--debug") == 0) debug_mode = 1;
+        if (strcmp(argv[i], "--version") == 0)
+        {
+            printf("Version: %s\n", version);
+            return 0;
+        }
     }
 
     load_config();
