@@ -7,6 +7,7 @@
 #include <sys/wait.h>
 #include <pwd.h>
 #include <grp.h>
+#include <glob.h>
 #include <linux/input.h>
 #include <libevdev/libevdev.h>
 #include <yaml.h>
@@ -22,7 +23,7 @@ Macro macros[32];
 int macro_count = 0;
 int key_states[KEY_MAX] = {0};
 int debug_mode = 0;
-char version[] = "1.0.1";
+char version[] = "1.0.2";
 
 void load_config();
 void run_as_user(const char *cmd);
@@ -123,11 +124,22 @@ void run_as_user(const char *cmd)
             // Setup environment ... TODO: exact copy of user's envs
             setenv("USER", pw->pw_name, 1);
             setenv("HOME", pw->pw_dir, 1);
-            setenv("DISPLAY", ":0", 1); 
-            
+            setenv("DISPLAY", ":0", 1);
+            setenv("WAYLAND_DISPLAY", "wayland-0", 1);
+
             char runtime_path[64];
             snprintf(runtime_path, sizeof(runtime_path), "/run/user/%d", pw->pw_uid);
             setenv("XDG_RUNTIME_DIR", runtime_path, 1);
+
+            // Xwayland refuses clients without the session cookie; KDE names it xauth_XXXXXX per login
+            char xauth_pattern[96];
+            snprintf(xauth_pattern, sizeof(xauth_pattern), "%s/xauth_*", runtime_path);
+            glob_t xauth;
+            if (glob(xauth_pattern, 0, NULL, &xauth) == 0)
+            {
+                setenv("XAUTHORITY", xauth.gl_pathv[0], 1);
+                globfree(&xauth);
+            }
 
             char dbus_path[128];
             snprintf(dbus_path, sizeof(dbus_path), "unix:path=/run/user/%d/bus", pw->pw_uid);
@@ -151,6 +163,9 @@ void run_as_user(const char *cmd)
 
 int main(int argc, char **argv) // TODO: Refactor
 {
+    // journald gets a pipe, not a tty: flush every line so logs show up when they happen
+    setvbuf(stdout, NULL, _IOLBF, 0);
+
     for (int i = 1; i < argc; i++) 
     {
         if (strcmp(argv[i], "--debug") == 0) debug_mode = 1;

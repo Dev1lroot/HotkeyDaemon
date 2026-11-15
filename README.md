@@ -66,12 +66,32 @@ macros:
   # Example with the Copilot "key" (crutch)
   # Meta (125) + Shift (42) + F23 (193)
   - keys: [125, 42, 193]
-    command: "firefox https://gemini.google.com/app && sleep 0.2 && wmctrl -xa firefox"
+    command: "/usr/local/bin/hkd-focus firefox -- firefox https://gemini.google.com/app"
+
+  # Meta (125) + D (32): minimize / restore all windows
+  - keys: [125, 32]
+    command: "/usr/local/bin/hkd-minimize-all"
 
   # Meta (125) + S (31)
   - keys: [125, 31]
     command: "spectacle"
 ```
+
+HELPERS (KDE Plasma, Wayland and X11)
+-------------------------------------
+
+`make install` also installs two helpers that talk to KWin through its scripting
+D-Bus API, so they work for native Wayland windows (wmctrl/xdotool only see
+XWayland ones):
+
+* `hkd-focus APP [-- COMMAND...]` runs the command, then unminimizes and focuses
+    the app's most recent window (APP matches the app id / WM class, e.g.
+    "firefox"). Wayland's focus-stealing prevention otherwise keeps an already
+    running app, such as Firefox opening a new tab, in the background. If the app
+    is just starting, its first window is focused when it appears (up to 10 s).
+* `hkd-minimize-all` minimizes every window on the current desktop, or restores
+    them all when they are already minimized (Win+D). Unbind Meta+D in KDE's
+    shortcut settings, or both will toggle and undo each other.
 
 USAGE
 -----

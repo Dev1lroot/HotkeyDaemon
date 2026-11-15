@@ -5,7 +5,7 @@ TARGET = hkd
 SRC = hkd.c
 
 PKG_NAME = hotkeydaemon
-PKG_VERSION = 1.0.1
+PKG_VERSION = 1.0.2
 ARCH = amd64
 
 PKG_SRC_DIR = target/debian-based
@@ -30,6 +30,8 @@ clean:
 install: all
 	@echo "Installing binary to /usr/local/bin..."
 	install -m 755 $(TARGET) /usr/local/bin/$(TARGET)
+	install -m 755 hkd-minimize-all /usr/local/bin/hkd-minimize-all
+	install -m 755 hkd-focus /usr/local/bin/hkd-focus
 	
 	@echo "Creating configuration directory at $(CONFIG_DIR)..."
 	install -d -m 755 $(CONFIG_DIR)
@@ -51,6 +53,8 @@ package: clean all
 
 	mkdir -p $(PKG_BUILD_DIR)/usr/local/bin
 	install -m 755 $(TARGET) $(PKG_BUILD_DIR)/usr/local/bin/$(TARGET)
+	install -m 755 hkd-minimize-all $(PKG_BUILD_DIR)/usr/local/bin/hkd-minimize-all
+	install -m 755 hkd-focus $(PKG_BUILD_DIR)/usr/local/bin/hkd-focus
 
 	# TODO: Copy config
 
@@ -75,7 +79,7 @@ package: clean all
 
 uninstall:
 	@echo "Removing binary..."
-	rm -f /usr/local/bin/$(TARGET)
+	rm -f /usr/local/bin/$(TARGET) /usr/local/bin/hkd-minimize-all /usr/local/bin/hkd-focus
 	@echo "Binary removed. Configuration at $(CONFIG_DIR) was preserved."
 
 .PHONY: all clean install uninstall

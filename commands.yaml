@@ -1,3 +1,9 @@
 macros:
+  - keys: [56, 125, 42, 193]  # Left Alt + Meta + Shift + F23
+    command: "/usr/local/bin/hkd-focus firefox -- firefox https://claude.ai/settings/usage"
   - keys: [125, 42, 193]  # Meta + Shift + F23
-    command: "firefox https://gemini.google.com/app && sleep 0.1 && wmctrl -xa firefox"
+    command: "/usr/local/bin/hkd-focus firefox -- firefox https://gemini.google.com/app"
+  - keys: [125, 32]  # Meta + D: minimize / restore all windows
+    command: "/usr/local/bin/hkd-minimize-all"
+  - keys: [126, 32]  # Right Meta + D
+    command: "/usr/local/bin/hkd-minimize-all"

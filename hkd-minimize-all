@@ -1,0 +1,43 @@
+#!/bin/sh
+# hkd-minimize-all: Win+D for KDE Plasma (Wayland and X11).
+#
+# Toggles: if any window on the current desktop/activity is visible, minimize
+# them all; if they are all minimized already, restore them. It talks to KWin
+# through its scripting D-Bus API, so it works for native Wayland windows too
+# (wmctrl/xdotool only ever see XWayland windows).
+
+NAME=hkd-minimize-all
+JS="${XDG_RUNTIME_DIR:-/tmp}/$NAME.js"
+
+QDBUS=$(command -v qdbus6 || command -v qdbus || true)
+if [ -z "$QDBUS" ]; then
+    echo "$NAME: qdbus6/qdbus not found" >&2
+    exit 1
+fi
+
+cat > "$JS" <<'EOF'
+(function () {
+    function relevant(w) {
+        return w.minimizable && !w.skipTaskbar &&
+            (!w.desktops.length || w.desktops.includes(workspace.currentDesktop)) &&
+            (!w.activities.length || w.activities.includes(workspace.currentActivity));
+    }
+    // Bottom-to-top, so restoring keeps the original stacking.
+    const wins = workspace.stackingOrder.filter(relevant);
+    const minimize = wins.some(w => !w.minimized);
+    for (const w of wins) {
+        w.minimized = minimize;
+    }
+    if (!minimize && wins.length) {
+        workspace.activeWindow = wins[wins.length - 1];
+    }
+    print("hkd-minimize-all: " + (minimize ? "minimized " : "restored ") + wins.length + " window(s)");
+})();
+EOF
+
+S="$QDBUS org.kde.KWin /Scripting org.kde.kwin.Scripting"
+$S.unloadScript "$NAME" >/dev/null 2>&1
+$S.loadScript "$JS" "$NAME" >/dev/null || exit 1
+$S.start >/dev/null
+$S.unloadScript "$NAME" >/dev/null 2>&1
+exit 0

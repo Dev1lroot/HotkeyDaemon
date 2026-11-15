@@ -1,0 +1,94 @@
+#!/bin/sh
+# hkd-focus: run a command, then bring the app's window to the front (KDE Plasma, Wayland and X11).
+#
+#   hkd-focus APP [-- COMMAND [ARGS...]]
+#
+# APP matches a window's app id / WM class or desktop file name (case-insensitive substring),
+# e.g. "firefox", "konsole", "dolphin".
+#
+# Wayland's focus-stealing prevention stops an already running app (say Firefox opening a new tab)
+# from raising itself, and wmctrl/xdotool only see XWayland windows. KWin itself is allowed to
+# activate anything, so we ask it through its scripting D-Bus API: unminimize the app's most recent
+# window and focus it. If the app is only just starting, KWin keeps watching for its window for a few
+# seconds and focuses it as soon as it appears.
+
+WAIT_SECONDS=10
+
+if [ $# -lt 1 ] || [ -z "$1" ] || [ "$1" = "--" ]; then
+    echo "usage: hkd-focus APP [-- COMMAND [ARGS...]]" >&2
+    exit 2
+fi
+APP=$(printf '%s' "$1" | tr -cd 'A-Za-z0-9._-')
+shift
+[ "${1:-}" = "--" ] && shift
+
+QDBUS=$(command -v qdbus6 || command -v qdbus || true)
+if [ -z "$QDBUS" ]; then
+    echo "hkd-focus: qdbus6/qdbus not found" >&2
+    [ $# -gt 0 ] && exec "$@"
+    exit 1
+fi
+
+# Start the command first. "firefox URL" with Firefox already running hands the URL over and exits
+# almost at once, so give it a moment: then the tab is open before we raise the window.
+if [ $# -gt 0 ]; then
+    "$@" &
+    CMD_PID=$!
+    i=0
+    while [ $i -lt 15 ] && kill -0 "$CMD_PID" 2>/dev/null; do
+        sleep 0.1
+        i=$((i + 1))
+    done
+fi
+
+NAME="hkd-focus-$$"
+JS="${XDG_RUNTIME_DIR:-/tmp}/$NAME.js"
+
+cat > "$JS" <<EOF
+(function () {
+    const app = "$APP".toLowerCase();
+    function matches(w) {
+        if (!w.normalWindow) return false;
+        const cls = String(w.resourceClass || "").toLowerCase();
+        const name = String(w.resourceName || "").toLowerCase();
+        const desk = String(w.desktopFileName || "").toLowerCase();
+        return cls.includes(app) || name.includes(app) || desk.includes(app);
+    }
+    function onCurrentDesktop(w) {
+        return !w.desktops.length || w.desktops.includes(workspace.currentDesktop);
+    }
+    function focus(w) {
+        w.minimized = false;
+        workspace.activeWindow = w;
+        print("hkd-focus: focused " + w.resourceClass + " \"" + w.caption + "\"");
+    }
+
+    // Prefer the topmost matching window on the current desktop: that's the one apps like Firefox
+    // open new tabs in. Fall back to any desktop (KWin then switches to it).
+    const all = workspace.stackingOrder.filter(matches);
+    const here = all.filter(onCurrentDesktop);
+    const target = here.length ? here[here.length - 1] : all[all.length - 1];
+    if (target) {
+        focus(target);
+        return;
+    }
+
+    // Not open yet: focus the first matching window that shows up.
+    let done = false;
+    workspace.windowAdded.connect(function (w) {
+        if (done || !matches(w)) return;
+        done = true;
+        focus(w);
+    });
+})();
+EOF
+
+S="$QDBUS org.kde.KWin /Scripting org.kde.kwin.Scripting"
+$S.loadScript "$JS" "$NAME" >/dev/null || exit 1
+$S.start >/dev/null
+
+# Keep the window watcher alive for a while, then clean up.
+sleep "$WAIT_SECONDS"
+$S.unloadScript "$NAME" >/dev/null 2>&1
+rm -f "$JS"
+exit 0
